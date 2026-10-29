@@ -1,0 +1,9 @@
+# Local case data and evidence must never be committed
+data/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.env
+.DS_Store

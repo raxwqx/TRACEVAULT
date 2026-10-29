@@ -1,0 +1,9 @@
+[project]
+name = "tracevault"
+version = "0.1.0"
+description = "Turkish local-first OSINT and digital forensics workspace"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
