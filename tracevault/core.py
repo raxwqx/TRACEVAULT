@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
+from io import BytesIO
 from pathlib import Path
 import hashlib
 import json
+import zipfile
 from .db import get_conn, APP_DIR
 
 def now_utc():
@@ -46,12 +48,15 @@ def verify_evidence(evidence_id):
         if not row:
             raise ValueError("Kanıt kaydı bulunamadı.")
         item = dict(row)
-    path = (APP_DIR / item["stored_path"]).resolve()
+    original_path = APP_DIR / item["stored_path"]
+    path = original_path.resolve()
     evidence_root = (APP_DIR / "data" / "evidence").resolve()
-    if evidence_root not in path.parents or not path.is_file():
-        return {"exists": False, "matches": False, "current_sha256": None}
+    if original_path.is_symlink() or evidence_root not in path.parents or not path.is_file():
+        return {"exists": False, "matches": False, "current_sha256": None, "current_size_bytes": None}
     current = sha256_file(path)
-    return {"exists": True, "matches": current == item["sha256"], "current_sha256": current}
+    current_size = path.stat().st_size
+    matches = current == item["sha256"] and current_size == item["size_bytes"]
+    return {"exists": True, "matches": matches, "current_sha256": current, "current_size_bytes": current_size}
 
 def add_source(case_id, title, url="", source_type="Diğer", accessed_at="", notes=""):
     with get_conn() as con:
@@ -117,6 +122,42 @@ def export_case_data(case_id):
             "Bu rapor uygulama tarafından oluşturulmuştur; hukuki veya adli geçerlilik garantisi vermez."
         ]
     }
+
+def export_case_bundle(case_id, max_uncompressed_bytes=256 * 1024 * 1024):
+    """Build a ZIP with a manifest and verified evidence copies."""
+    data = export_case_data(case_id)
+    evidence = data["evidence"]
+    total_size = sum(int(item.get("size_bytes", 0)) for item in evidence)
+    if total_size > max_uncompressed_bytes:
+        raise ValueError("Case evidence exceeds the 256 MiB export limit.")
+
+    buffer = BytesIO()
+    bundle_files = []
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as archive:
+        for item in evidence:
+            verification = verify_evidence(item["id"])
+            if not verification["exists"] or not verification["matches"]:
+                raise ValueError(f"Evidence #{item['id']} is missing or has changed; the bundle was not created.")
+            source = (APP_DIR / item["stored_path"]).resolve()
+            safe_name = Path(item["filename"]).name.replace("\\", "_")
+            if safe_name in {"", ".", ".."}:
+                safe_name = f"evidence-{item['id']}.bin"
+            archive_name = f"evidence/{item['id']}_{safe_name}"
+            with source.open("rb") as src, archive.open(archive_name, "w") as dst:
+                while chunk := src.read(1024 * 1024):
+                    dst.write(chunk)
+            bundle_files.append({
+                "path": archive_name,
+                "sha256": item["sha256"],
+                "size_bytes": item["size_bytes"],
+            })
+        data["bundle_files"] = bundle_files
+        archive.writestr(
+            "manifest.json",
+            json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
+        )
+    return buffer.getvalue()
+
 
 def export_case_json(case_id):
     return json.dumps(export_case_data(case_id), ensure_ascii=False, indent=2)
