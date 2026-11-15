@@ -125,7 +125,7 @@ with st.sidebar:
     page = st.radio("NAVIGASYON", PAGES, label_visibility="collapsed")
     st.markdown('<div class="tv-rule"></div>', unsafe_allow_html=True)
     st.caption("MODE: LOCAL-FIRST")
-    st.caption("BUILD: 0.2.0 // RETRO DESK")
+    st.caption("BUILD: 5.0.0 // RETRO DESK")
     st.caption("VERİLER: BU BİLGİSAYARDA")
 
 st.markdown('<div class="tv-kicker">STYX LABS  /  RESEARCH CONSOLE  /  TR</div>', unsafe_allow_html=True)
