@@ -81,6 +81,9 @@ Arayüz, yumuşak yeşil vurgulara ve sol gezinme menüsüne sahip koyu bir ara�
 
 ## What is TRACEVAULT?
 
+- Export a verified ZIP evidence bundle with a JSON manifest; export stops if any recorded evidence is missing or its SHA-256 no longer matches.
+
+
 TRACEVAULT is a **local-first research desk** built to help organize research activity in one workspace. It brings together a personal notes vault, note-to-note links, case records, evidence metadata, source and finding logs, event timelines, case-report exports, a local Wi-Fi information view, and a virtual network-topology learning area.
 
 The visual style borrows from classic research terminals: dark panels, restrained green highlights, monospaced labels, and a calm, information-dense layout.
