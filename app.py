@@ -15,7 +15,7 @@ from tracevault.core import (
     sha256_file, add_case, list_cases, add_evidence, list_evidence,
     verify_evidence, add_source, list_sources, add_finding, list_findings,
     add_event, list_events, add_relationship, list_relationships,
-    export_case_markdown, export_case_json
+    export_case_markdown, export_case_json, export_case_bundle
 )
 
 APP_DIR = Path(__file__).resolve().parent
@@ -400,6 +400,17 @@ elif page == "Rapor Merkezi":
         st.markdown(f"#### {case['name']}")
         st.download_button("Markdown raporu indir", export_case_markdown(active_case), file_name=f"tracevault-vaka-{active_case}.md", mime="text/markdown")
         st.download_button("JSON raporu indir", export_case_json(active_case), file_name=f"tracevault-vaka-{active_case}.json", mime="application/json")
+        st.caption("ZIP paketi ham kanıt dosyalarını içerir. Yalnızca yetkili kişilerle güvenli biçimde paylaşın.")
+        bundle_key = "tracevault_case_bundle"
+        if st.button("Doğrulanmış ZIP kanıt paketini hazırla"):
+            try:
+                with st.spinner("Kanıtlar doğrulanıyor ve paket hazırlanıyor..."):
+                    st.session_state[bundle_key] = {"case_id": active_case, "data": export_case_bundle(active_case)}
+            except (OSError, ValueError) as exc:
+                st.error(str(exc))
+        bundle = st.session_state.get(bundle_key, {})
+        if bundle.get("case_id") == active_case:
+            st.download_button("ZIP kanıt paketini indir", bundle["data"], file_name=f"tracevault-vaka-{active_case}-evidence.zip", mime="application/zip")
 
 elif page == "Wi-Fi Radarı":
     st.subheader("Wi-Fi Radarı / Yakındaki ağlar")
