@@ -5,3 +5,4 @@
 - Added downloadable ZIP case bundles containing a JSON manifest and evidence whose recorded SHA-256 hashes verify.
 - Bundle creation stops on missing or changed evidence and caps total uncompressed evidence at 256 MiB.
 - Updated package metadata and the in-app build label to version 5.0.0.
+- Migrated Streamlit controls and charts to the current `width="stretch"` API.

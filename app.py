@@ -183,7 +183,7 @@ elif page == "Bilgi Kasası":
     top1, top2, top3 = st.columns([1.5, 1, 1])
     with top1: search = st.text_input("Notlarda ara", placeholder="başlık, içerik veya etiket...")
     with top2: folder_filter = st.selectbox("Klasör", ["Tüm klasörler"] + folders)
-    with top3: st.write(""); new_note = st.button("＋ Yeni not", use_container_width=True)
+    with top3: st.write(""); new_note = st.button("＋ Yeni not", width="stretch")
     filtered = db_notes(search, folder_filter)
     left, right = st.columns([0.85, 1.5])
     with left:
@@ -247,7 +247,7 @@ elif page == "Bilgi Kasası":
             for target in targets:
                 links.append({"Kaynak not": n["title"], "Hedef not": target.strip(), "Durum": "Bağlı" if target.strip() in all_titles else "Hedef eksik"})
         if links:
-            st.dataframe(pd.DataFrame(links), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(links), width="stretch", hide_index=True)
         else:
             st.caption("Henüz [[not bağlantısı]] bulunmuyor.")
     st.download_button("Notları JSON olarak dışa aktar", data=json.dumps(all_notes, ensure_ascii=False, indent=2), file_name="tracevault-notes.json", mime="application/json")
@@ -277,7 +277,7 @@ elif page == "Graf Bağlantıları":
                                  marker=dict(size=18, color="#c2d879", line=dict(width=1, color="#11130f")), hovertext=[G.nodes[n].get("folder", "") for n in G.nodes()], hoverinfo="text+name"))
         fig.update_layout(paper_bgcolor="#11130f", plot_bgcolor="#11130f", font=dict(color="#d5dfc3", family="IBM Plex Mono"),
                           margin=dict(l=10,r=10,t=20,b=10), showlegend=False, xaxis=dict(visible=False), yaxis=dict(visible=False), height=550)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
         st.caption(f"{G.number_of_nodes()} not · {G.number_of_edges()} bağlantı. Bağlantılar [[Not Başlığı]] biçiminden çıkarılır.")
     else:
         st.info("Grafiği oluşturmak için önce Bilgi Kasası'na birkaç not ekle.")
@@ -295,7 +295,7 @@ elif page == "Vakalar":
                 add_case(name.strip(), description.strip(), status)
                 st.success("Vaka oluşturuldu.")
                 st.rerun()
-    if cases: st.dataframe(pd.DataFrame(cases)[["id","name","status","description","created_at"]], use_container_width=True, hide_index=True)
+    if cases: st.dataframe(pd.DataFrame(cases)[["id","name","status","description","created_at"]], width="stretch", hide_index=True)
     else: st.info("Henüz vaka yok.")
 
 elif page == "Kanıt Kasası":
@@ -357,7 +357,7 @@ elif page == "Kaynaklar ve Bulgular":
                         st.success("Bulgu eklendi."); st.rerun()
         st.markdown("#### Kaynak listesi")
         src = list_sources(active_case)
-        if src: st.dataframe(pd.DataFrame(src)[["id","title","url","source_type","accessed_at"]], use_container_width=True, hide_index=True)
+        if src: st.dataframe(pd.DataFrame(src)[["id","title","url","source_type","accessed_at"]], width="stretch", hide_index=True)
         st.markdown("#### Bulgu listesi")
         findings = list_findings(active_case)
         if findings:
@@ -431,11 +431,11 @@ elif page == "Wi-Fi Radarı":
     else:
         st.caption(f"Son tarama: {st.session_state.get('wifi_scan_at', '—')} · {len(rows)} ağ")
         df = pd.DataFrame(rows).sort_values("Sinyal (%)", ascending=False)
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width="stretch", hide_index=True)
         chart = go.Figure(go.Bar(x=df["Sinyal (%)"], y=df["SSID"], orientation="h", marker_color="#a9c36a"))
         chart.update_layout(paper_bgcolor="#11130f", plot_bgcolor="#11130f", font=dict(color="#d5dfc3", family="IBM Plex Mono"),
                            xaxis_title="Sinyal (%)", yaxis_title="SSID", height=max(280, min(650, 32*len(df)+100)), margin=dict(l=10,r=10,t=10,b=10))
-        st.plotly_chart(chart, use_container_width=True)
+        st.plotly_chart(chart, width="stretch")
         st.download_button("CSV dışa aktar", df.to_csv(index=False).encode("utf-8-sig"), file_name="tracevault-wifi-observation.csv", mime="text/csv")
     with st.expander("Kali Linux'ta çalışmazsa"):
         st.code("nmcli device status\nnmcli radio wifi on\nnmcli dev wifi list")
@@ -479,7 +479,7 @@ elif page == "Ağ Laboratuvarı":
                     st.session_state["lab_nodes"] = nodes
                     st.success("Sanal cihaz eklendi."); st.rerun()
         if nodes:
-            st.dataframe(pd.DataFrame(nodes), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(nodes), width="stretch", hide_index=True)
             remove_name = st.selectbox("Cihaz kaldır", [n["name"] for n in nodes], key="remove_device")
             if st.button("Seçili cihazı kaldır"):
                 st.session_state["lab_nodes"] = [n for n in nodes if n["name"] != remove_name]
@@ -503,7 +503,7 @@ elif page == "Ağ Laboratuvarı":
                         st.success(f"Bağlantı eklendi: {left_node} ↔ {right_node}"); st.rerun()
         else: st.info("Bağlantı kurmak için en az iki cihaz ekle.")
         if links:
-            st.dataframe(pd.DataFrame([{"Uç A":a,"Uç B":b,"Ortam":st.session_state.get("lab_link_types",{}).get(f"{a}|{b}","Ethernet")} for a,b in links]), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame([{"Uç A":a,"Uç B":b,"Ortam":st.session_state.get("lab_link_types",{}).get(f"{a}|{b}","Ethernet")} for a,b in links]), width="stretch", hide_index=True)
             remove_link = st.selectbox("Kaldırılacak bağlantı", [f"{a} ↔ {b}" for a,b in links])
             if st.button("Bağlantıyı kaldır"):
                 idx = [f"{a} ↔ {b}" for a,b in links].index(remove_link)
@@ -522,7 +522,7 @@ elif page == "Ağ Laboratuvarı":
                 text=[f"{n}<br>{G.nodes[n]['kind']}" for n in G.nodes()],textposition="bottom center",
                 marker=dict(size=24,color="#c2d879",line=dict(color="#11130f",width=2)),hovertext=[G.nodes[n]["kind"] for n in G.nodes()],hoverinfo="text+name"))
             fig.update_layout(paper_bgcolor="#11130f",plot_bgcolor="#11130f",font=dict(color="#d5dfc3",family="IBM Plex Mono"),height=430,margin=dict(l=10,r=10,t=10,b=10),xaxis=dict(visible=False),yaxis=dict(visible=False),showlegend=False)
-            st.plotly_chart(fig,use_container_width=True)
+            st.plotly_chart(fig,width="stretch")
     with tab_cli:
         st.markdown("#### Eğitim konsolu")
         st.caption("Komutlar yalnızca bu sanal topoloji üzerinde çalışır.")
