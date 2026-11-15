@@ -81,8 +81,6 @@ Arayüz, yumuşak yeşil vurgulara ve sol gezinme menüsüne sahip koyu bir ara�
 
 ## What is TRACEVAULT?
 
-- Export a verified ZIP evidence bundle with a JSON manifest; export stops if any recorded evidence is missing or its SHA-256 no longer matches.
-
 
 TRACEVAULT is a **local-first research desk** built to help organize research activity in one workspace. It brings together a personal notes vault, note-to-note links, case records, evidence metadata, source and finding logs, event timelines, case-report exports, a local Wi-Fi information view, and a virtual network-topology learning area.
 
@@ -99,7 +97,7 @@ The visual style borrows from classic research terminals: dark panels, restraine
 | **Evidence Vault** | Save uploaded files under the local data directory, record metadata, calculate SHA-256, and check a stored file against its recorded digest. |
 | **Sources & Findings** | Record research sources and findings associated with a case. |
 | **Timeline** | Record and review events by timestamp. |
-| **Report Center** | Export case information as Markdown and JSON. |
+| **Report Center** | Export case information as Markdown and JSON, or download a verified ZIP bundle with a JSON manifest and original evidence. Bundle creation stops if a file is missing or its recorded SHA-256 differs; exports are limited to 256 MiB of uncompressed evidence. |
 | **Wi-Fi Radar** | Display nearby Wi-Fi broadcast details reported by NetworkManager's `nmcli`, when the host system supports it. |
 | **Network Lab** | Assemble a virtual topology with devices such as PCs, laptops, servers, routers, switches, access points, and firewalls. Add virtual links, review basic IP settings, and import/export topology JSON. |
 | **Retro Desk UI** | Dark, terminal-inspired styling with muted green accents. |
@@ -178,7 +176,7 @@ To stop the server, return to the terminal and press `Ctrl+C`. To leave the virt
 7. **Create a timeline.** Record event times carefully, including timezone context where relevant.
 8. **Review local Wi-Fi details.** The Wi-Fi Radar reads what the local wireless stack reports. Results vary with hardware, driver, permissions, and NetworkManager configuration.
 9. **Practice network design.** Use the Network Lab to add virtual devices and links, review basic configuration checks, and export/import a topology as JSON.
-10. **Export reports.** Use the relevant export controls to save available case data and reports.
+10. **Export reports.** In the Report Center, download Markdown or JSON, or prepare a verified evidence ZIP. The ZIP includes original evidence files and a manifest with their paths, sizes, and SHA-256 hashes; preparation stops if evidence is missing, changed, or the case exceeds the 256 MiB limit. Treat the ZIP as sensitive because it contains the source files.
 
 ## Repository layout
 
@@ -260,7 +258,7 @@ Arayüz dili klasik araştırma terminallerinden ilham alır: koyu paneller, öl
 | **Kanıt Kasası** | Yüklenen dosyaları yerel veri klasörüne kaydeder, metaverilerini tutar, SHA-256 özeti hesaplar ve dosyanın kayıtlı özetle eşleşmesini denetler. |
 | **Kaynaklar ve Bulgular** | Bir vakayla ilişkili kaynakları ve bulguları kaydeder. |
 | **Zaman Çizelgesi** | Olayları zaman damgalarıyla kaydetmeye ve sıralı incelemeye yardımcı olur. |
-| **Rapor Merkezi** | Vaka bilgilerini Markdown ve JSON olarak dışa aktarır. |
+| **Rapor Merkezi** | Vaka bilgilerini Markdown veya JSON olarak dışa aktarır; özgün kanıt dosyaları ile JSON manifestini içeren doğrulanmış ZIP paketi hazırlar. Eksik dosya veya SHA-256 uyuşmazlığında durur; paketteki sıkıştırılmamış kanıtlar 256 MiB ile sınırlıdır. |
 | **Wi-Fi Radarı** | Sistem desteklediğinde NetworkManager `nmcli` üzerinden bildirilen yakındaki Wi-Fi yayın bilgilerini gösterir. |
 | **Ağ Laboratuvarı** | PC, laptop, sunucu, router, switch, access point ve firewall gibi sanal cihazlarla topoloji kurar. Sanal bağlantılar ekleyebilir, temel IP ayarlarını inceleyebilir ve topolojiyi JSON olarak içe/dışa aktarabilirsin. |
 | **Retro Arayüz** | Yumuşak yeşil vurgulara sahip koyu, terminal esintili görünüm. |
@@ -339,7 +337,7 @@ Sunucuyu durdurmak için terminale dönüp `Ctrl+C` tuşlarına bas. Sanal ortam
 7. **Zaman çizelgesi hazırla.** Olay saatlerini dikkatle gir; gerekiyorsa saat dilimini de belirt.
 8. **Yerel Wi-Fi bilgilerini incele.** Wi-Fi Radarı, yerel kablosuz sistemin bildirdiği verileri okur. Sonuçlar donanım, sürücü, izinler ve NetworkManager yapılandırmasına göre değişebilir.
 9. **Ağ tasarımını çalış.** Ağ Laboratuvarı'na sanal cihazlar ve bağlantılar ekle, temel yapılandırma kontrollerini incele ve topolojiyi JSON olarak dışa aktar veya içe aktar.
-10. **Raporları dışa aktar.** İlgili dışa aktarma kontrolleriyle mevcut vaka bilgilerini ve raporları kaydet.
+10. **Raporları dışa aktar.** Rapor Merkezi'nden Markdown veya JSON indir ya da doğrulanmış kanıt ZIP'i hazırla. ZIP özgün kanıt dosyalarını ve dosya yolu, boyut, SHA-256 bilgilerini içeren manifesti taşır. Kanıt eksikse, değişmişse veya vaka 256 MiB sınırını aşıyorsa hazırlama durur. ZIP kaynak dosyalarını içerdiği için hassas kabul edilmelidir.
 
 ## Depo klasör yapısı
 
