@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from pathlib import Path
 import sqlite3
 
@@ -5,16 +6,42 @@ APP_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = APP_DIR / "data" / "tracevault.db"
 
 
-def get_conn():
+def _connect():
+    """Open a raw SQLite connection.
+
+    Prefer :func:`get_conn`, which also commits, rolls back and closes the
+    connection correctly.
+    """
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 5000")
     return conn
+
+
+@contextmanager
+def get_conn():
+    """Yield a SQLite connection and always close it afterwards.
+
+    ``with sqlite3.connect(...)`` only manages the transaction, it does not
+    close the connection. Streamlit keeps the process alive for a long time,
+    so leaking file descriptors would eventually break the app.
+    """
+    conn = _connect()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def init_db():
     with get_conn() as con:
+        con.execute("PRAGMA journal_mode = WAL")
         con.executescript("""
         CREATE TABLE IF NOT EXISTS cases (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,4 +106,11 @@ def init_db():
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
+
+        CREATE INDEX IF NOT EXISTS idx_evidence_case ON evidence(case_id);
+        CREATE INDEX IF NOT EXISTS idx_sources_case ON sources(case_id);
+        CREATE INDEX IF NOT EXISTS idx_findings_case ON findings(case_id);
+        CREATE INDEX IF NOT EXISTS idx_events_case_time ON events(case_id, event_time_utc);
+        CREATE INDEX IF NOT EXISTS idx_relationships_case ON relationships(case_id);
+        CREATE INDEX IF NOT EXISTS idx_notes_updated ON notes(updated_at DESC);
         """)
