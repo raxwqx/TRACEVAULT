@@ -13,8 +13,9 @@ import plotly.graph_objects as go
 from tracevault.db import init_db, get_conn
 from tracevault.core import (
     sha256_file, add_case, list_cases, add_evidence, list_evidence,
-    verify_evidence, add_source, list_sources, add_finding, list_findings,
-    add_event, list_events, add_relationship, list_relationships,
+    verify_evidence, verify_all_evidence, export_integrity_json, export_integrity_markdown,
+    add_source, list_sources, add_finding, list_findings,
+    add_event, list_events, validate_topology_payload,
     export_case_markdown, export_case_json
 )
 
@@ -53,7 +54,8 @@ footer { visibility:hidden; }
 
 PAGES = [
     "Desk / Genel Bakış", "Bilgi Kasası", "Graf Bağlantıları", "Vakalar", "Kanıt Kasası",
-    "Kaynaklar ve Bulgular", "Zaman Çizelgesi", "Rapor Merkezi", "Wi-Fi Radarı", "Ağ Laboratuvarı", "Ayarlar"
+    "Bütünlük Taraması", "Kaynaklar ve Bulgular", "Zaman Çizelgesi", "Rapor Merkezi",
+    "Wi-Fi Radarı", "Ağ Laboratuvarı", "Ayarlar"
 ]
 
 def now_iso():
@@ -79,9 +81,17 @@ def save_note(note_id, title, content, folder, tags):
         if note_id:
             con.execute("UPDATE notes SET title=?,content=?,folder=?,tags=?,updated_at=? WHERE id=?",
                         (title, content, folder, tags, stamp, note_id))
-        else:
-            con.execute("INSERT INTO notes(title,content,folder,tags,created_at,updated_at) VALUES(?,?,?,?,?,?)",
-                        (title, content, folder, tags, stamp, stamp))
+            return note_id
+        cur = con.execute("INSERT INTO notes(title,content,folder,tags,created_at,updated_at) VALUES(?,?,?,?,?,?)",
+                          (title, content, folder, tags, stamp, stamp))
+        return cur.lastrowid
+
+def load_note_into_editor(note):
+    st.session_state["editing_note_id"] = note["id"]
+    st.session_state["note_title"] = note["title"]
+    st.session_state["note_content"] = note["content"]
+    st.session_state["note_folder"] = note["folder"]
+    st.session_state["note_tags"] = note["tags"]
 
 def delete_note(note_id):
     with get_conn() as con:
@@ -125,7 +135,7 @@ with st.sidebar:
     page = st.radio("NAVIGASYON", PAGES, label_visibility="collapsed")
     st.markdown('<div class="tv-rule"></div>', unsafe_allow_html=True)
     st.caption("MODE: LOCAL-FIRST")
-    st.caption("BUILD: 0.2.0 // RETRO DESK")
+    st.caption("BUILD: 0.3.0 // RETRO DESK")
     st.caption("VERİLER: BU BİLGİSAYARDA")
 
 st.markdown('<div class="tv-kicker">STYX LABS  /  RESEARCH CONSOLE  /  TR</div>', unsafe_allow_html=True)
@@ -162,7 +172,8 @@ if page == "Desk / Genel Bakış":
         01 / <b>Bilgi Kasası</b> · Markdown notları, klasörler, etiketler, wikilink bağlantıları<br><br>
         02 / <b>Wi-Fi Radarı</b> · Yakındaki SSID ve sinyal bilgilerini yerel olarak görüntüle<br><br>
         03 / <b>Ağ Laboratuvarı</b> · Router, switch, PC, server ve firewall ile sanal topoloji kur<br><br>
-        04 / <b>Kanıt Kasası</b> · Dosya kaydı ve SHA-256 bütünlük kontrolü
+        04 / <b>Kanıt Kasası</b> · Dosya kaydı ve SHA-256 bütünlük kontrolü<br><br>
+        05 / <b>Bütünlük Taraması</b> · Tüm kanıtları tek taramada doğrula ve rapor indir
         </div>
         """, unsafe_allow_html=True)
     with right:
@@ -203,17 +214,14 @@ elif page == "Bilgi Kasası":
             st.session_state["note_tags"] = ""
             st.rerun()
         elif selected_note and st.session_state.get("editing_note_id", "unset") == "unset":
-            st.session_state["editing_note_id"] = selected_note["id"]
-            st.session_state["note_title"] = selected_note["title"]
-            st.session_state["note_content"] = selected_note["content"]
-            st.session_state["note_folder"] = selected_note["folder"]
-            st.session_state["note_tags"] = selected_note["tags"]
-        elif selected_note and st.session_state.get("editing_note_id") != selected_note["id"] and not st.session_state.get("manual_edit", False):
-            st.session_state["editing_note_id"] = selected_note["id"]
-            st.session_state["note_title"] = selected_note["title"]
-            st.session_state["note_content"] = selected_note["content"]
-            st.session_state["note_folder"] = selected_note["folder"]
-            st.session_state["note_tags"] = selected_note["tags"]
+            load_note_into_editor(selected_note)
+        elif (
+            selected_note
+            and st.session_state.get("editing_note_id") is not None
+            and st.session_state.get("editing_note_id") != selected_note["id"]
+        ):
+            # The user picked a different note from the list.
+            load_note_into_editor(selected_note)
     with right:
         st.markdown("#### Düzenleyici")
         with st.form("note_editor", clear_on_submit=False):
@@ -226,8 +234,14 @@ elif page == "Bilgi Kasası":
                 if not title.strip():
                     st.error("Not başlığı gerekli.")
                 else:
-                    save_note(st.session_state.get("editing_note_id"), title.strip(), content, folder.strip() or "Gelen Kutusu", tags.strip())
-                    st.session_state["manual_edit"] = False
+                    saved_id = save_note(
+                        st.session_state.get("editing_note_id"),
+                        title.strip(),
+                        content,
+                        folder.strip() or "Gelen Kutusu",
+                        tags.strip(),
+                    )
+                    st.session_state["editing_note_id"] = saved_id
                     st.success("Not kaydedildi.")
                     st.rerun()
         if selected_note and st.session_state.get("editing_note_id") == selected_note["id"]:
@@ -323,6 +337,92 @@ elif page == "Kanıt Kasası":
                 if result["exists"] and result["matches"]: st.success("SHA-256 eşleşiyor.")
                 elif result["exists"]: st.error("SHA-256 uyuşmuyor.")
                 else: st.error("Dosya bulunamadı.")
+
+elif page == "Bütünlük Taraması":
+    st.subheader("Bütünlük Taraması / Integrity Sweep")
+    st.markdown('<div class="tv-banner">READ-ONLY CHECK · Kayıtlı kanıt dosyalarının SHA-256 özetlerini yeniden hesaplar. Hiçbir dosyayı değiştirmez, taşımaz veya silmez.</div>', unsafe_allow_html=True)
+    st.write("")
+    st.caption("Tüm vakaları veya tek bir vakayı tarayarak doğrulanan, uyuşmayan, eksik ve okunamayan dosyaları tek raporda gör.")
+
+    scope_options = {"Tüm vakalar": None}
+    for c in cases:
+        scope_options[f'#{c["id"]} · {c["name"]}'] = c["id"]
+    scope_label = st.selectbox("Tarama kapsamı", list(scope_options.keys()))
+    scope_id = scope_options[scope_label]
+
+    if st.button("↻ Bütünlük taramasını başlat", type="primary"):
+        with st.spinner("Kanıt özetleri yeniden hesaplanıyor..."):
+            st.session_state["integrity_result"] = verify_all_evidence(scope_id)
+
+    result = st.session_state.get("integrity_result")
+    if result is not None and result.get("case_id") != scope_id:
+        result = None
+
+    if result is None:
+        st.info("Taramayı başlatmak için yukarıdaki düğmeye bas. Tarama yalnızca yerel dosyaları okur.")
+    else:
+        summary = result["summary"]
+        m1, m2, m3, m4, m5 = st.columns(5)
+        m1.metric("TOPLAM KAYIT", summary["total"])
+        m2.metric("DOĞRULANDI", summary["verified"])
+        m3.metric("UYUŞMUYOR", summary["mismatched"])
+        m4.metric("DOSYA YOK", summary["missing"])
+        m5.metric("OKUNAMADI", summary["unreadable"])
+        st.caption(f"Tarama zamanı (UTC): {result['generated_at_utc']} · Kapsam: {scope_label}")
+
+        if summary["total"] == 0:
+            st.info("Bu kapsamda kanıt kaydı yok.")
+        else:
+            status_labels = {
+                "verified": "✔ Doğrulandı",
+                "mismatched": "✖ Uyuşmuyor",
+                "missing": "! Dosya yok",
+                "unreadable": "? Okunamadı",
+            }
+            table = pd.DataFrame([
+                {
+                    "ID": item["evidence_id"],
+                    "Vaka": f'#{item["case_id"]} · {item["case_name"]}',
+                    "Dosya": item["filename"],
+                    "Durum": status_labels[item["status"]],
+                    "Boyut (bayt)": item["size_bytes"],
+                    "Kayıt (UTC)": item["created_at"],
+                }
+                for item in result["items"]
+            ])
+            st.dataframe(table, use_container_width=True, hide_index=True)
+
+            if summary["mismatched"] or summary["missing"] or summary["unreadable"]:
+                st.error("Bazı kanıt dosyaları doğrulanamadı. Ayrıntılar için aşağıdaki raporu indir ve orijinal kopyalarla karşılaştır.")
+            else:
+                st.success("Tüm kanıt dosyaları kayıtlı SHA-256 özetleriyle eşleşiyor.")
+
+            col_md, col_json = st.columns(2)
+            with col_md:
+                st.download_button(
+                    "Markdown bütünlük raporu indir",
+                    data=export_integrity_markdown(scope_id, result),
+                    file_name="tracevault-butunluluk-raporu.md",
+                    mime="text/markdown",
+                    use_container_width=True,
+                )
+            with col_json:
+                st.download_button(
+                    "JSON bütünlük raporu indir",
+                    data=export_integrity_json(scope_id, result),
+                    file_name="tracevault-butunluluk-raporu.json",
+                    mime="application/json",
+                    use_container_width=True,
+                )
+
+        st.markdown("#### Nasıl yorumlanır?")
+        st.markdown(
+            "- **Doğrulandı:** Dosya var ve SHA-256 özeti kayıtla aynı.\n"
+            "- **Uyuşmuyor:** Dosya var ancak içeriği kayıttan sonra değişmiş olabilir.\n"
+            "- **Dosya yok:** Kayıt var, dosya diskte bulunamadı (taşınmış veya silinmiş olabilir).\n"
+            "- **Okunamadı:** Dosya var ancak izin veya G/Ç hatası nedeniyle özet hesaplanamadı.\n"
+            "- Eşleşme tek başına dosyanın kaynağını, gerçekliğini veya hukuki geçerliliğini kanıtlamaz."
+        )
 
 elif page == "Kaynaklar ve Bulgular":
     st.subheader("Kaynaklar ve bulgular")
@@ -472,7 +572,12 @@ elif page == "Ağ Laboratuvarı":
             remove_name = st.selectbox("Cihaz kaldır", [n["name"] for n in nodes], key="remove_device")
             if st.button("Seçili cihazı kaldır"):
                 st.session_state["lab_nodes"] = [n for n in nodes if n["name"] != remove_name]
-                st.session_state["lab_links"] = [(a,b) for a,b in links if a != remove_name and b != remove_name]
+                st.session_state["lab_links"] = [(a, b) for a, b in links if a != remove_name and b != remove_name]
+                link_types = st.session_state.get("lab_link_types", {})
+                st.session_state["lab_link_types"] = {
+                    key: value for key, value in link_types.items()
+                    if remove_name not in key.split("|")
+                }
                 st.rerun()
     with tab_links:
         names = [n["name"] for n in nodes]
@@ -495,8 +600,13 @@ elif page == "Ağ Laboratuvarı":
             st.dataframe(pd.DataFrame([{"Uç A":a,"Uç B":b,"Ortam":st.session_state.get("lab_link_types",{}).get(f"{a}|{b}","Ethernet")} for a,b in links]), use_container_width=True, hide_index=True)
             remove_link = st.selectbox("Kaldırılacak bağlantı", [f"{a} ↔ {b}" for a,b in links])
             if st.button("Bağlantıyı kaldır"):
-                idx = [f"{a} ↔ {b}" for a,b in links].index(remove_link)
-                links.pop(idx); st.session_state["lab_links"] = links; st.rerun()
+                labels = [f"{a} ↔ {b}" for a, b in links]
+                left, right = links.pop(labels.index(remove_link))
+                st.session_state["lab_links"] = links
+                link_types = st.session_state.get("lab_link_types", {})
+                link_types.pop(f"{left}|{right}", None)
+                link_types.pop(f"{right}|{left}", None)
+                st.rerun()
         # Topology view
         if nodes:
             G = nx.Graph()
@@ -569,13 +679,18 @@ elif page == "Ağ Laboratuvarı":
         if uploaded_topology and st.button("Topolojiyi yükle"):
             try:
                 payload = json.loads(uploaded_topology.getvalue().decode("utf-8"))
-                new_nodes = payload["devices"]
-                new_links = [(item["from"],item["to"]) for item in payload["links"]]
-                valid_names = {n["name"] for n in new_nodes}
-                if any(a not in valid_names or b not in valid_names for a,b in new_links): raise ValueError("Bağlantı bilinmeyen cihaza işaret ediyor.")
-                st.session_state["lab_nodes"] = new_nodes; st.session_state["lab_links"] = new_links
-                st.success("Topoloji yüklendi."); st.rerun()
-            except Exception as exc: st.error(f"Topoloji yüklenemedi: {exc}")
+                new_nodes, new_links = validate_topology_payload(payload)
+                st.session_state["lab_nodes"] = new_nodes
+                st.session_state["lab_links"] = new_links
+                st.session_state["lab_link_types"] = {}
+                st.success("Topoloji yüklendi.")
+                st.rerun()
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                st.error("Topoloji yüklenemedi: dosya geçerli UTF-8 JSON değil.")
+            except ValueError as exc:
+                st.error(f"Topoloji yüklenemedi: {exc}")
+            except Exception as exc:
+                st.error(f"Topoloji yüklenemedi: {exc}")
 
 elif page == "Ayarlar":
     st.subheader("Ayarlar / Sistem bilgisi")

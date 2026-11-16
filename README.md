@@ -27,9 +27,9 @@
 [![Linux](https://img.shields.io/badge/Linux-Kali%20%7C%20Debian-242820?style=for-the-badge&logo=linux&logoColor=d9e6b9)](https://www.kali.org/)
 [![License](https://img.shields.io/badge/License-MIT-c2d879?style=for-the-badge)](LICENSE)
 
-**EN** · A local-first workspace for research notes, case records, evidence metadata, source tracking, Wi-Fi observations, and virtual network-topology learning.
+**EN** · A local-first workspace for research notes, case records, evidence metadata and integrity reports, source tracking, Wi-Fi observations, and virtual network-topology learning.
 
-**TR** · Araştırma notları, vaka kayıtları, kanıt metaverileri, kaynak takibi, Wi-Fi gözlemleri ve sanal ağ topolojisi çalışmaları için yerel çalışan bir çalışma alanı.
+**TR** · Araştırma notları, vaka kayıtları, kanıt metaverileri ve bütünlük raporları, kaynak takibi, Wi-Fi gözlemleri ve sanal ağ topolojisi çalışmaları için yerel çalışan bir çalışma alanı.
 
 [English](#-english) · [Türkçe](#-türkçe) · [Quick Start](#-quick-start--hızlı-başlangıç) · [Privacy & Safety](#-privacy-safety--güvenlik)
 
@@ -46,6 +46,7 @@
 | **Storage / Depolama** | Local SQLite and local files | Yerel SQLite veritabanı ve dosyalar |
 | **Notes / Notlar** | Markdown-style notes and `[[wikilinks]]` | Markdown tarzı notlar ve `[[not bağlantıları]]` |
 | **Evidence / Kanıt** | File records and SHA-256 checks | Dosya kayıtları ve SHA-256 kontrolleri |
+| **Integrity / Bütünlük** | One-pass hash verification and reports | Tek taramada özet doğrulama ve rapor |
 | **Network Lab / Ağ Laboratuvarı** | Virtual topology for learning | Öğrenme amaçlı sanal topoloji |
 
 ## Interface preview / Arayüz önizlemesi
@@ -65,11 +66,12 @@ Arayüz, yumuşak yeşil vurgulara ve sol gezinme menüsüne sahip koyu bir ara�
 │    Graph          │  │ CASE FILES │ │   NOTES    │ │  EVIDENCE  │       │
 │    Case Files     │  └────────────┘ └────────────┘ └────────────┘       │
 │    Evidence       │                                                     │
-│    Sources        │  QUICK ACCESS                                       │
-│    Timeline       │  01 / Knowledge Vault     Markdown · tags · links    │
-│    Reports        │  02 / Evidence Vault      File record · SHA-256      │
-│    Wi-Fi Radar    │  03 / Network Lab        Virtual devices · links    │
-│    Network Lab    │  04 / Reports            Markdown · JSON             │
+│    Integrity      │  QUICK ACCESS                                       │
+│    Sources        │  01 / Knowledge Vault     Markdown · tags · links    │
+│    Timeline       │  02 / Evidence Vault      File record · SHA-256      │
+│    Reports        │  03 / Integrity Sweep     Verify all · MD / JSON     │
+│    Wi-Fi Radar    │  04 / Network Lab         Virtual devices · links    │
+│    Network Lab    │  05 / Reports             Markdown · JSON            │
 │                   │                                                     │
 │  MODE: LOCAL      │  DATA: STORED ON THIS MACHINE BY DEFAULT             │
 └───────────────────┴────────────────────────────────────────────────────┘
@@ -81,7 +83,7 @@ Arayüz, yumuşak yeşil vurgulara ve sol gezinme menüsüne sahip koyu bir ara�
 
 ## What is TRACEVAULT?
 
-TRACEVAULT is a **local-first research desk** built to help organize research activity in one workspace. It brings together a personal notes vault, note-to-note links, case records, evidence metadata, source and finding logs, event timelines, case-report exports, a local Wi-Fi information view, and a virtual network-topology learning area.
+TRACEVAULT is a **local-first research desk** built to help organize research activity in one workspace. It brings together a personal notes vault, note-to-note links, case records, evidence metadata, one-pass evidence integrity reports, source and finding logs, event timelines, case-report exports, a local Wi-Fi information view, and a virtual network-topology learning area.
 
 The visual style borrows from classic research terminals: dark panels, restrained green highlights, monospaced labels, and a calm, information-dense layout.
 
@@ -94,12 +96,22 @@ The visual style borrows from classic research terminals: dark panels, restraine
 | **Knowledge Graph** | Visualize links between notes when a `[[wikilink]]` points to an existing note. |
 | **Case Files** | Create case records with a name, description, and status. |
 | **Evidence Vault** | Save uploaded files under the local data directory, record metadata, calculate SHA-256, and check a stored file against its recorded digest. |
+| **Integrity Sweep** | Re-hash every stored evidence file in one pass, group results into verified, mismatched, missing, or unreadable, then export a Markdown or JSON integrity report. Read-only: it never modifies evidence. |
 | **Sources & Findings** | Record research sources and findings associated with a case. |
 | **Timeline** | Record and review events by timestamp. |
 | **Report Center** | Export case information as Markdown and JSON. |
 | **Wi-Fi Radar** | Display nearby Wi-Fi broadcast details reported by NetworkManager's `nmcli`, when the host system supports it. |
 | **Network Lab** | Assemble a virtual topology with devices such as PCs, laptops, servers, routers, switches, access points, and firewalls. Add virtual links, review basic IP settings, and import/export topology JSON. |
 | **Retro Desk UI** | Dark, terminal-inspired styling with muted green accents. |
+
+### What's new in v0.3.0
+
+- **Integrity Sweep:** verify every evidence file across all cases, or just one case, and download a Markdown/JSON integrity report.
+- **Fixed:** the “＋ New note” button now opens a genuinely blank editor instead of reloading the first note.
+- **Fixed:** SQLite connections are now closed after every operation, preventing file-descriptor leaks during long sessions.
+- **Hardened:** topology JSON import validates the payload and shows a clear error instead of crashing on malformed files.
+- **Fixed:** removing a lab link/device now also clears its stale link metadata; relationship inserts return a stable ID.
+- **Project hygiene:** complete MIT LICENSE, aligned version metadata, database indexes, and a CI matrix with pip caching.
 
 ## Requirements
 
@@ -142,6 +154,8 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+# Optional: test tools (pytest)
+python -m pip install -r requirements-dev.txt
 ```
 
 ### Run tests and launch
@@ -172,10 +186,11 @@ To stop the server, return to the terminal and press `Ctrl+C`. To leave the virt
 4. **Create a case.** Add a case record before associating evidence, sources, findings, or events with it.
 5. **Record evidence context.** Add files through the Evidence Vault and describe where they came from and why they matter. Preserve important originals separately.
 6. **Track sources and findings.** Keep source details and findings linked to the relevant case. Distinguish a source's statement from your own interpretation.
-7. **Create a timeline.** Record event times carefully, including timezone context where relevant.
-8. **Review local Wi-Fi details.** The Wi-Fi Radar reads what the local wireless stack reports. Results vary with hardware, driver, permissions, and NetworkManager configuration.
-9. **Practice network design.** Use the Network Lab to add virtual devices and links, review basic configuration checks, and export/import a topology as JSON.
-10. **Export reports.** Use the relevant export controls to save available case data and reports.
+7. **Run an integrity sweep.** Open **Integrity Sweep**, choose all cases or the active case, and review verified, mismatched, missing, and unreadable files. Download the Markdown or JSON report for your records.
+8. **Create a timeline.** Record event times carefully, including timezone context where relevant.
+9. **Review local Wi-Fi details.** The Wi-Fi Radar reads what the local wireless stack reports. Results vary with hardware, driver, permissions, and NetworkManager configuration.
+10. **Practice network design.** Use the Network Lab to add virtual devices and links, review basic configuration checks, and export/import a topology as JSON.
+11. **Export reports.** Use the relevant export controls to save available case data and reports.
 
 ## Repository layout
 
@@ -184,11 +199,14 @@ TRACEVAULT/
 ├── app.py                       # Streamlit interface
 ├── tracevault/
 │   ├── __init__.py
-│   ├── core.py                  # Case, evidence, source and report logic
+│   ├── core.py                  # Case, evidence, integrity and report logic
 │   └── db.py                    # Local SQLite database setup
 ├── tests/                       # Automated tests
 ├── .github/workflows/           # GitHub Actions workflows
-├── requirements.txt              # Python dependencies
+├── requirements.txt              # Runtime Python dependencies
+├── requirements-dev.txt          # Test dependencies
+├── CHANGELOG.md                  # Release history
+├── SECURITY.md                   # Vulnerability reporting policy
 ├── .gitignore                   # Excludes local/sensitive files
 └── README.md
 ```
@@ -226,6 +244,13 @@ nmcli dev wifi list
 
 The feature depends on your wireless hardware, driver, permissions, and local system configuration. It may not work in some virtual machines or on systems without a compatible wireless adapter.
 
+### Integrity Sweep reports a missing or mismatched file
+
+- **Missing:** the database still has the record, but the file is not under `data/evidence/`. It may have been moved, renamed, or deleted. Restore the original copy and run the sweep again.
+- **Mismatched:** the file exists, but its SHA-256 differs from the recorded digest. Do not overwrite the record; preserve the current file, compare it with your backup/original, and document what changed.
+- **Unreadable:** the file exists but its digest could not be computed, usually because of file permissions or an I/O error. Fix access and run the sweep again.
+- If you moved the project folder, keep the relative `data/evidence/` structure intact. Absolute paths outside that folder are intentionally rejected by the verifier.
+
 ### Port 8501 is busy
 
 Use another port:
@@ -242,7 +267,7 @@ Then open <http://127.0.0.1:8502>.
 
 ## TRACEVAULT nedir?
 
-TRACEVAULT, araştırma süreçlerini tek bir çalışma alanında düzenlemeye yardımcı olan **yerel çalışan bir araştırma masasıdır**. Kişisel not kasasını, notlar arası bağlantıları, vaka kayıtlarını, kanıt metaverilerini, kaynak ve bulgu takibini, olay zaman çizelgesini, vaka raporu dışa aktarmayı, yerel Wi-Fi bilgi ekranını ve sanal ağ topolojisi laboratuvarını bir araya getirir.
+TRACEVAULT, araştırma süreçlerini tek bir çalışma alanında düzenlemeye yardımcı olan **yerel çalışan bir araştırma masasıdır**. Kişisel not kasasını, notlar arası bağlantıları, vaka kayıtlarını, kanıt metaverilerini, tek taramalık kanıt bütünlüğü raporlarını, kaynak ve bulgu takibini, olay zaman çizelgesini, vaka raporu dışa aktarmayı, yerel Wi-Fi bilgi ekranını ve sanal ağ topolojisi laboratuvarını bir araya getirir.
 
 Arayüz dili klasik araştırma terminallerinden ilham alır: koyu paneller, ölçülü yeşil vurgular, monospace etiketler ve bilgi odaklı bir yerleşim.
 
@@ -255,12 +280,22 @@ Arayüz dili klasik araştırma terminallerinden ilham alır: koyu paneller, öl
 | **Bilgi Grafiği** | `[[not bağlantısı]]` mevcut bir nota işaret ettiğinde notlar arasındaki ilişkiyi görselleştirir. |
 | **Vaka Dosyaları** | Ad, açıklama ve durum bilgileri içeren vaka kayıtları oluşturur. |
 | **Kanıt Kasası** | Yüklenen dosyaları yerel veri klasörüne kaydeder, metaverilerini tutar, SHA-256 özeti hesaplar ve dosyanın kayıtlı özetle eşleşmesini denetler. |
+| **Bütünlük Taraması** | Kayıtlı tüm kanıt dosyalarının SHA-256 özetini tek taramada yeniden hesaplar; doğrulanan, uyuşmayan, eksik ve okunamayan dosyaları gruplar ve Markdown/JSON bütünlük raporu indirir. Salt okunurdur, kanıta dokunmaz. |
 | **Kaynaklar ve Bulgular** | Bir vakayla ilişkili kaynakları ve bulguları kaydeder. |
 | **Zaman Çizelgesi** | Olayları zaman damgalarıyla kaydetmeye ve sıralı incelemeye yardımcı olur. |
 | **Rapor Merkezi** | Vaka bilgilerini Markdown ve JSON olarak dışa aktarır. |
 | **Wi-Fi Radarı** | Sistem desteklediğinde NetworkManager `nmcli` üzerinden bildirilen yakındaki Wi-Fi yayın bilgilerini gösterir. |
 | **Ağ Laboratuvarı** | PC, laptop, sunucu, router, switch, access point ve firewall gibi sanal cihazlarla topoloji kurar. Sanal bağlantılar ekleyebilir, temel IP ayarlarını inceleyebilir ve topolojiyi JSON olarak içe/dışa aktarabilirsin. |
 | **Retro Arayüz** | Yumuşak yeşil vurgulara sahip koyu, terminal esintili görünüm. |
+
+### v0.3.0 yenilikleri
+
+- **Bütünlük Taraması:** Tüm vakalardaki veya tek bir vakadaki kanıtları doğrula; Markdown/JSON bütünlük raporu indir.
+- **Düzeltildi:** “＋ Yeni not” düğmesi artık ilk notu geri yüklemek yerine gerçekten boş bir editör açıyor.
+- **Düzeltildi:** SQLite bağlantıları her işlemden sonra kapatılıyor; uzun oturumlarda dosya tanımlayıcı sızıntısı önlendi.
+- **Sağlamlaştırıldı:** Topoloji JSON içe aktarma, bozuk dosyada çökmek yerine veriyi doğruluyor ve anlaşılır hata gösteriyor.
+- **Düzeltildi:** Laboratuvarda bağlantı/cihaz silindiğinde eski bağlantı metaverisi de temizleniyor; ilişki kaydı kararlı ID döndürüyor.
+- **Proje düzeni:** Tam MIT lisansı, uyumlu sürüm bilgisi, veritabanı indeksleri ve pip önbellekli CI matrisi.
 
 ## Gereksinimler
 
@@ -303,6 +338,8 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+# İsteğe bağlı: test araçları (pytest)
+python -m pip install -r requirements-dev.txt
 ```
 
 ### Testleri çalıştır ve uygulamayı başlat
@@ -333,10 +370,11 @@ Sunucuyu durdurmak için terminale dönüp `Ctrl+C` tuşlarına bas. Sanal ortam
 4. **Vaka oluştur.** Kanıtları, kaynakları, bulguları veya olayları ilişkilendirmeden önce vaka kaydı aç.
 5. **Kanıt bağlamını kaydet.** Kanıt Kasası'na dosya eklerken nereden geldiğini ve neden önemli olduğunu açıkla. Önemli materyallerin orijinalini ayrıca koru.
 6. **Kaynakları ve bulguları takip et.** Kaynak ayrıntılarını ve bulguları ilgili vakayla ilişkilendir. Kaynağın söylediği şeyle kendi yorumunu birbirinden ayır.
-7. **Zaman çizelgesi hazırla.** Olay saatlerini dikkatle gir; gerekiyorsa saat dilimini de belirt.
-8. **Yerel Wi-Fi bilgilerini incele.** Wi-Fi Radarı, yerel kablosuz sistemin bildirdiği verileri okur. Sonuçlar donanım, sürücü, izinler ve NetworkManager yapılandırmasına göre değişebilir.
-9. **Ağ tasarımını çalış.** Ağ Laboratuvarı'na sanal cihazlar ve bağlantılar ekle, temel yapılandırma kontrollerini incele ve topolojiyi JSON olarak dışa aktar veya içe aktar.
-10. **Raporları dışa aktar.** İlgili dışa aktarma kontrolleriyle mevcut vaka bilgilerini ve raporları kaydet.
+7. **Bütünlük taraması yap.** **Bütünlük Taraması** bölümünü aç, tüm vakaları veya aktif vakayı seç; doğrulanan, uyuşmayan, eksik ve okunamayan dosyaları incele. Kayıtların için Markdown veya JSON raporu indir.
+8. **Zaman çizelgesi hazırla.** Olay saatlerini dikkatle gir; gerekiyorsa saat dilimini de belirt.
+9. **Yerel Wi-Fi bilgilerini incele.** Wi-Fi Radarı, yerel kablosuz sistemin bildirdiği verileri okur. Sonuçlar donanım, sürücü, izinler ve NetworkManager yapılandırmasına göre değişebilir.
+10. **Ağ tasarımını çalış.** Ağ Laboratuvarı'na sanal cihazlar ve bağlantılar ekle, temel yapılandırma kontrollerini incele ve topolojiyi JSON olarak dışa aktar veya içe aktar.
+11. **Raporları dışa aktar.** İlgili dışa aktarma kontrolleriyle mevcut vaka bilgilerini ve raporları kaydet.
 
 ## Depo klasör yapısı
 
@@ -345,11 +383,14 @@ TRACEVAULT/
 ├── app.py                       # Streamlit arayüzü
 ├── tracevault/
 │   ├── __init__.py
-│   ├── core.py                  # Vaka, kanıt, kaynak ve rapor mantığı
+│   ├── core.py                  # Vaka, kanıt, bütünlük ve rapor mantığı
 │   └── db.py                    # Yerel SQLite veritabanı kurulumu
 ├── tests/                       # Otomatik testler
 ├── .github/workflows/           # GitHub Actions iş akışları
-├── requirements.txt              # Python bağımlılıkları
+├── requirements.txt              # Çalışma zamanı bağımlılıkları
+├── requirements-dev.txt          # Test bağımlılıkları
+├── CHANGELOG.md                  # Sürüm geçmişi
+├── SECURITY.md                   # Güvenlik açığı bildirim politikası
 ├── .gitignore                   # Yerel/hassas dosyaları dışlar
 └── README.md
 ```
@@ -387,6 +428,13 @@ nmcli dev wifi list
 
 Bu özellik kablosuz donanıma, sürücüye, izinlere ve sistem yapılandırmasına bağlıdır. Bazı sanal makinelerde veya uyumlu kablosuz adaptörü olmayan sistemlerde çalışmayabilir.
 
+### Bütünlük Taraması eksik veya uyuşmayan dosya bildiriyor
+
+- **Dosya yok:** Veritabanında kayıt duruyor, ancak dosya `data/evidence/` altında değil. Taşınmış, adı değişmiş veya silinmiş olabilir. Orijinal kopyayı geri yükleyip taramayı yeniden çalıştır.
+- **Uyuşmuyor:** Dosya mevcut, ancak SHA-256 özeti kayıtlı özetten farklı. Kaydı üzerine yazma; mevcut dosyayı koru, yedek/orijinal ile karşılaştır ve neyin değiştiğini belgele.
+- **Okunamadı:** Dosya mevcut, ancak dosya izinleri veya G/Ç hatası nedeniyle özet hesaplanamadı. Erişimi düzeltip taramayı yeniden çalıştır.
+- Proje klasörünü taşıdıysan `data/evidence/` göreli yapısını koru. Bu klasör dışındaki mutlak yollar doğrulayıcı tarafından bilinçli olarak reddedilir.
+
 ### 8501 portu kullanımda
 
 Farklı bir port kullan:
@@ -409,6 +457,7 @@ TRACEVAULT is designed for local-first use, but **local storage is not encryptio
 - **Review before every push.** Run `git status` and make sure data files, exports, secrets, and virtual environments are not being committed.
 - **Preserve originals.** For important forensic material, keep an untouched original and conduct checks on a copy where practical.
 - **Understand SHA-256.** A matching digest indicates that a checked file matches the recorded hash. By itself, it does not establish who created the file, where it originated, whether its contents are true, or whether it is legally admissible.
+- **Integrity Sweep is read-only.** It reads files to compute SHA-256 and never modifies, moves, or deletes evidence. Reports may still reveal file names and digests; review them before sharing.
 - **Wi-Fi Radar is observational.** It lists broadcast details made visible by the local wireless stack. It is not a password-cracking, packet-interception, disconnection, or unauthorized-access tool.
 - **Network Lab is virtual.** It does not run Cisco IOS, emulate physical hardware, or send real network packets through the simulated topology.
 - **Get permission.** Use TRACEVAULT for your own records, authorized investigations, learning, and lawful OSINT work.
@@ -421,21 +470,24 @@ TRACEVAULT yerel kullanım için tasarlanmıştır; ancak **yerel depolama şifr
 - **Her gönderimden önce kontrol et.** `git status` çalıştır; veri dosyalarının, dışa aktarımların, sırların ve sanal ortamların commit edilmediğinden emin ol.
 - **Orijinal materyali koru.** Önemli adli materyallerde değişmemiş bir orijinal bulundur ve mümkün olduğunda kontrolleri kopya üzerinde yap.
 - **SHA-256'nın sınırlarını bil.** Hash eşleşmesi, kontrol edilen dosyanın kayıtlı özetle aynı olduğunu gösterir. Tek başına dosyayı kimin oluşturduğunu, kaynağını, içeriğinin doğruluğunu veya hukuki geçerliliğini kanıtlamaz.
+- **Bütünlük Taraması salt okunurdur.** SHA-256 hesaplamak için dosyaları okur; kanıtı değiştirmez, taşımaz veya silmez. Raporlar yine de dosya adlarını ve özetleri içerebilir; paylaşmadan önce gözden geçir.
 - **Wi-Fi Radarı gözlem amaçlıdır.** Yerel kablosuz sistemin görünür kıldığı yayın bilgilerini listeler. Parola kırma, paket ele geçirme, bağlantı kesme veya izinsiz erişim aracı değildir.
 - **Ağ Laboratuvarı sanaldır.** Cisco IOS çalıştırmaz, fiziksel donanımı emüle etmez ve sanal topoloji üzerinden gerçek ağ paketi göndermez.
 - **İzin al.** TRACEVAULT'ı kendi kayıtların, izinli incelemeler, öğrenme ve hukuka uygun OSINT çalışmaları için kullan.
 
 ## 🧪 Testing / Testler
 
-Run from the repository root with the dependencies installed:
+Run from the repository root with the test dependencies installed:
 
 ```bash
+python -m pip install -r requirements-dev.txt
 PYTHONPATH=. python -m pytest -q
 ```
 
 Bağımlılıklar kurulu durumdayken depo kökünde aynı komutu çalıştır:
 
 ```bash
+python -m pip install -r requirements-dev.txt
 PYTHONPATH=. python -m pytest -q
 ```
 
